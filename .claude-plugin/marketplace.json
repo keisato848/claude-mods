@@ -1,0 +1,11 @@
+{
+  "name": "keisato-mods",
+  "owner": { "name": "keisato848" },
+  "plugins": [
+    {
+      "name": "session-lens",
+      "source": "./mods/session-lens",
+      "description": "Mod: 右ペインにトークン内訳、下部に作業要約と次の一手、ターン完了時にステータス付きセッション名（裏方は Haiku 5.5）"
+    }
+  ]
+}

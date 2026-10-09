@@ -1,0 +1,21 @@
+{
+  "name": "session-lens",
+  "version": "0.1.0",
+  "description": "右ペインにトークン内訳、下部に作業要約と次の一手、ターン完了時にステータス付きセッション名を自動付与（裏方の AI 呼び出しは Haiku 5.5 固定）",
+  "types": "./types/index.d.ts",
+  "userConfig": {
+    "backgroundModel": {
+      "type": "string",
+      "title": "裏方モデル",
+      "description": "要約・状況判断・タイトル生成に使うモデル。メインのやり取り以外はこのモデルだけを使う",
+      "default": "claude-haiku-5-5",
+      "options": ["claude-haiku-5-5"]
+    },
+    "autoRename": {
+      "type": "boolean",
+      "title": "セッション名の自動変更",
+      "description": "ターン完了ごとに「[ステータス][タグ] 要約」へ改名する",
+      "default": true
+    }
+  }
+}
