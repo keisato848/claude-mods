@@ -154,3 +154,22 @@ ${last ? `<p>直近の API 呼び出し: 入力 ${last.input.toLocaleString()} /
 ${brief ? `<h2>作業状況</h2><p><b>[${esc(brief.status)}][${esc(brief.tag)}]</b> ${esc(brief.summary)}</p><p><b>次の一手:</b> ${esc(brief.next)}</p>` : ''}
 </body></html>`
 }
+
+/** /lens-text 用: ペインの無い画面（スマホのアプリ）でも読める Markdown の内訳 */
+export function renderText(ctx: CtxSnapshot | null, reads: readonly ReadEntry[], brief: Brief | null, limit = 10): string {
+  const lines: string[] = ['**トークン内訳**']
+  if (ctx === null) {
+    lines.push('まだ計測していません（1 ターン終えると入ります）')
+  } else {
+    lines.push(`${fmt(ctx.total)} / ${fmt(ctx.max)} tokens（${ctx.percent}%）`, '')
+    for (const c of ctx.categories.filter(c => c.tokens > 0 && c.kind === 'used')) lines.push(`- ${c.name}: ${fmt(c.tokens)}`)
+    const last = ctx.lastCall
+    if (last !== null) lines.push('', `直近: 入力 ${fmt(last.input)} / cache読 ${fmt(last.cacheRead)} / cache書 ${fmt(last.cacheWrite)} / 出力 ${fmt(last.output)}`)
+  }
+  const top = topReads(reads, limit)
+  lines.push('', `**読み込み元（ツール結果の概算・上位 ${limit}）**`)
+  if (top.length === 0) lines.push('まだありません')
+  for (const r of top) lines.push(`- ${fmt(r.tokens)} ×${r.count} ${oneLine(r.label, 60)}`)
+  if (brief !== null) lines.push('', `**[${brief.status}][${brief.tag}]** ${brief.summary}`, `次の一手: ${brief.next}`)
+  return lines.join('\n')
+}

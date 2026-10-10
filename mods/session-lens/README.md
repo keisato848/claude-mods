@@ -20,7 +20,7 @@ Claude Code の Mods（関数フックのプラグイン）を使い、画面の
 ## 入れ方
 
 > [!NOTE]
-> Mods（関数フックのプラグイン）は早期アクセス機能で、API はリリースごとに変わりうる。このフォルダは Claude Code 2.1.294 で `claude plugin validate`・型検査・`claude plugin test`（5 件）を通してある。
+> Mods（関数フックのプラグイン）は早期アクセス機能で、API はリリースごとに変わりうる。このフォルダは Claude Code 2.1.294 で `claude plugin validate`・型検査・`claude plugin test`（6 件）を通してある。
 
 ### 手元に入れる
 
@@ -95,6 +95,7 @@ claude plugin test mods/session-lens
 |---|---|
 | `/lens` | トークン内訳ペインを開く（ターミナルが 144 列以上あれば起動時に自動で開く） |
 | `/lens-html` | 内訳を単体の HTML（`<プロジェクト>/.claude/session-lens-report.html`）に書き出す。ブラウザで開く |
+| `/lens-text` | 内訳を文字で会話に出す。スマホのアプリはペインを出せないので、スマホではこちらを使う。出した文字は AI も読むので、打つたびに数百トークン増える |
 | `/lens-brief` | 作業状況・次の一手・セッション名を今すぐ作り直す |
 
 下部の帯は「隠す」ボタンで閉じられる。
@@ -103,4 +104,5 @@ claude plugin test mods/session-lens
 
 - セッション名は、組み込みの `/rename` を Mod から呼んで変える。そのためトランスクリプトに `/rename` の出力が 1 行残る。`/rename` が無い環境では、次にプロンプトを送ったときに `sessionTitle` で付ける
 - ツール結果の読み込み量は文字数からの概算（ASCII は 4 文字で 1、それ以外は 1 文字で 1 と数える）。カテゴリ別の内訳はエンジンの見積もり
+- スマホのアプリではペインが出ない（2026-10-10 に実機で確認）。内訳は `/lens-text` で見る
 - 右ペインは、ターミナルではブロック文字の棒、デスクトップアプリでは SVG の積み上げ棒で描く。ペインの中には任意の HTML を描けないので、HTML は `/lens-html` で書き出す

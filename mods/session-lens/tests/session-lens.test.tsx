@@ -1,6 +1,6 @@
 import { describe, expect, mock, test } from 'claude-code/testing'
 
-import { buildTitle, estimateTokens, parseBrief, targetOf } from '../hooks/lib'
+import { buildTitle, estimateTokens, parseBrief, renderText, targetOf } from '../hooks/lib'
 
 const REPLY = JSON.stringify({
   status: '完了',
@@ -21,6 +21,24 @@ describe('lib', () => {
 
   test('buildTitle は [ステータス][タグ] 作業名', async () => {
     expect(buildTitle({ status: '確認待ち', tag: 'Mods', title: '設定作成' })).toBe('[確認待ち][Mods] 設定作成')
+  })
+
+  test('renderText は計測前でも読める文字を返し、読み込み元を多い順に出す', async () => {
+    expect(renderText(null, [], null)).toContain('まだ計測していません')
+    const ctx = {
+      at: 1, model: 'm', total: 15000, max: 200000, percent: 8,
+      categories: [{ name: 'Messages', tokens: 9000, kind: 'used' }, { name: 'Free space', tokens: 185000, kind: 'free' }],
+      memoryFiles: [], mcpTokens: 0, skillTokens: 0, lastCall: null,
+    }
+    const reads = [
+      { id: 'a', turn: 1, tool: 'Read', target: '/s.ts', tokens: 100 },
+      { id: 'b', turn: 1, tool: 'Read', target: '/b.ts', tokens: 3000 },
+    ]
+    const text = renderText(ctx, reads, null)
+    expect(text).toContain('15k / 200k tokens（8%）')
+    expect(text).toContain('- Messages: 9.0k')
+    expect(text).not.toContain('Free space')
+    expect(text.indexOf('/b.ts')).toBeLessThan(text.indexOf('/s.ts'))
   })
 
   test('targetOf と estimateTokens', async () => {

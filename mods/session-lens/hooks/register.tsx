@@ -2,7 +2,7 @@ import { atom, read, update } from 'claude-code'
 import type { EngineInterface, Register } from 'claude-code'
 
 import type { BriefStatus, CtxSnapshot, ReadEntry } from '../types'
-import { buildPrompt, buildTitle, colorAt, estimateTokens, fmt, oneLine, parseBrief, renderHtml, stackedBarSvg, targetOf, topReads } from './lib'
+import { buildPrompt, buildTitle, colorAt, estimateTokens, fmt, oneLine, parseBrief, renderHtml, renderText, stackedBarSvg, targetOf, topReads } from './lib'
 import type { Excerpt } from './lib'
 
 const PANE = 'lens-tokens'
@@ -100,6 +100,7 @@ export const register: Register = (on, options) => {
   on('session.start', async ($, e, next) => {
     await $.command.register({ name: 'lens', description: 'トークン内訳ペインを開く' })
     await $.command.register({ name: 'lens-html', description: 'トークン内訳を HTML に書き出す（.claude/session-lens-report.html）' })
+    await $.command.register({ name: 'lens-text', description: 'トークン内訳を文字で会話に出す（ペインの無いスマホのアプリ向け）' })
     await $.command.register({ name: 'lens-brief', description: '作業状況・次の一手・セッション名を今すぐ作り直す（Haiku 5.5）' })
     void $.ui.open({ id: PANE, title: 'トークン内訳' })
     return next(e)
@@ -116,6 +117,12 @@ export const register: Register = (on, options) => {
     const path = `${await $.session.root()}/.claude/session-lens-report.html`
     await $.fs.write(path, renderHtml(await read($, ctx), await read($, reads), await read($, brief)))
     return { text: `HTML を書き出しました: ${path}` }
+  })
+
+  // ペインを置けない画面（スマホのアプリ）向け。text は会話に残り、モデルも読む
+  on('command.run', { command: 'lens-text' }, async $ => {
+    await snapshot($)
+    return { text: renderText(await read($, ctx), await read($, reads), await read($, brief)) }
   })
 
   on('command.run', { command: 'lens-brief' }, async $ => {
