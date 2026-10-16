@@ -20,7 +20,7 @@ Claude Code の Mods（関数フックのプラグイン）を使い、画面の
 ## 入れ方
 
 > [!NOTE]
-> Mods（関数フックのプラグイン）は早期アクセス機能で、API はリリースごとに変わりうる。このフォルダは Claude Code 2.1.294 で `claude plugin validate`・型検査・`claude plugin test`（6 件）を通してある。
+> Mods（関数フックのプラグイン）は早期アクセス機能で、API はリリースごとに変わりうる。このフォルダは Claude Code 2.1.294 で `claude plugin validate`・型検査・`claude plugin test`（7 件）を通してある。
 
 ### 手元に入れる
 
@@ -55,7 +55,11 @@ claude plugin update session-lens@keisato-mods
 
 ```sh
 claude plugin marketplace add keisato848/claude-mods || true; claude plugin install session-lens@keisato-mods || true
+# アプリ上のセッション名を変えるため、2 つのツールだけ確認なしで許可する（~/.claude/settings.json に書き足す）
+node -e 'const fs=require("fs"),p=require("path"),f=p.join(require("os").homedir(),".claude","settings.json");let s={};try{s=JSON.parse(fs.readFileSync(f,"utf8"))}catch{}s.permissions??={};s.permissions.allow??=[];for(const t of ["mcp__claude-code-remote__get_session","mcp__claude-code-remote__set_session_title"])if(!s.permissions.allow.includes(t))s.permissions.allow.push(t);fs.mkdirSync(p.dirname(f),{recursive:true});fs.writeFileSync(f,JSON.stringify(s,null,2)+"\n")' || true
 ```
+
+クラウドセッションでは、`/rename` だけではアプリの一覧の名前が変わらない。session-lens はセッション管理のツール（`get_session` と `set_session_title`）でアプリ上の名前も変えるが、確認なしで呼べるときだけ呼ぶ（ターンごとに確認ダイアログを出さないため）。3 行目はその許可を足す。無くても Mod は動き、アプリ上の名前だけが変わらない。
 
 > [!WARNING]
 > Setup script は必ず 0 で終わる形にする。0 以外で終わるとセッションが起動しない。各コマンドの後ろの `|| true` を外さない。
@@ -103,6 +107,7 @@ claude plugin test mods/session-lens
 ## 制約
 
 - セッション名は、組み込みの `/rename` を Mod から呼んで変える。そのためトランスクリプトに `/rename` の出力が 1 行残る。`/rename` が無い環境では、次にプロンプトを送ったときに `sessionTitle` で付ける
+- クラウドセッションのアプリ上の名前は、Setup script で 2 つのツールを許可したときだけ変わる（2026-10-16 に実機で確認）
 - ツール結果の読み込み量は文字数からの概算（ASCII は 4 文字で 1、それ以外は 1 文字で 1 と数える）。カテゴリ別の内訳はエンジンの見積もり
 - スマホのアプリではペインが出ない（2026-10-10 に実機で確認）。内訳は `/lens-text` で見る
 - 右ペインは、ターミナルではブロック文字の棒、デスクトップアプリでは SVG の積み上げ棒で描く。ペインの中には任意の HTML を描けないので、HTML は `/lens-html` で書き出す

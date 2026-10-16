@@ -49,6 +49,36 @@ describe('lib', () => {
 })
 
 describe('engine', () => {
+  test('クラウドではセッション管理の MCP でアプリ上の名前も変える', async ($, on) => {
+    const clock = mock.clock(on)
+    const titles: { session_id: string; title: string }[] = []
+
+    on('session.messages', async () => ({ value: [{ role: 'user', text: 'Mods を作って', toolUses: [] }] }) as never)
+    on('model.complete', async () => ({
+      value: {
+        isAnswered: true,
+        text: REPLY,
+        usage: { input_tokens: 1, output_tokens: 1, cache_read_input_tokens: 0, cache_creation_input_tokens: 0 },
+      },
+    }) as never)
+    on('command.list', async () => ({ value: [] }) as never)
+    on('tool.check', async () => ({ decision: 'allow' }) as never)
+    on('tool.call', async (_$, e) => {
+      const input = e as unknown as { tool: string; session_id: string; title: string }
+      if (input.tool === 'mcp__claude-code-remote__get_session') return { result: '', text: '{"ccr":{"id":"session_01abc","title":"x"}}' } as never
+      if (input.tool === 'mcp__claude-code-remote__set_session_title') {
+        titles.push({ session_id: input.session_id, title: input.title })
+        return { result: '', text: 'ok' } as never
+      }
+      return { deny: 'unexpected' } as never
+    })
+
+    await $.command.run({ command: 'lens-brief', args: '' } as never)
+    await clock.advance(10)
+
+    expect(titles).toEqual([{ session_id: 'session_01abc', title: '[完了][Mods設…] UIの自動化設定' }])
+  })
+
   test('/lens-brief は Haiku 5.5 で要約し、/rename で改名し、下部に次の一手を出す', async ($, on) => {
     const clock = mock.clock(on)
     const models: string[] = []

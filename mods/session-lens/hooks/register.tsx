@@ -41,12 +41,40 @@ async function snapshot($: EngineInterface): Promise<void> {
   await update($, ctx, () => snap)
 }
 
+/** クラウドセッションのアプリ上の名前は /rename では変わらない。セッション管理の MCP で変える */
+const REMOTE = 'mcp__claude-code-remote__'
+let remoteSessionId: string | null | undefined
+
+async function renameRemote($: EngineInterface, title: string): Promise<boolean> {
+  if (remoteSessionId === null) return false
+  try {
+    if (remoteSessionId === undefined) {
+      // 許可が要る呼び出しはしない（ターンごとに確認ダイアログを出さない）
+      const asked = await $.tool.check({ tool: `${REMOTE}get_session`, input: {} } as never)
+      if (asked.decision !== 'allow') return false
+      const got = (await $.tool.call({ tool: `${REMOTE}get_session` } as never)) as { text?: string }
+      remoteSessionId = /"id"\s*:\s*"(session_[A-Za-z0-9]+)"/.exec(got.text ?? '')?.[1] ?? null
+      if (remoteSessionId === null) return false
+    }
+    const input = { session_id: remoteSessionId, title }
+    const { decision } = await $.tool.check({ tool: `${REMOTE}set_session_title`, input } as never)
+    if (decision !== 'allow') return false
+    const done = (await $.tool.call({ tool: `${REMOTE}set_session_title`, ...input } as never)) as { deny?: unknown; isError?: boolean }
+    return done.deny === undefined && done.isError !== true
+  } catch {
+    // ツールが無い（手元のセッション）
+    remoteSessionId = null
+    return false
+  }
+}
+
 async function rename($: EngineInterface, title: string): Promise<void> {
+  const isRemote = await renameRemote($, title)
   const commands = await $.command.list()
   if (commands.some(c => c.name === 'rename')) {
     await $.command.run({ command: 'rename', args: title })
     pendingTitle = undefined
-  } else {
+  } else if (!isRemote) {
     // /rename の無い環境では次のプロンプト送信時に sessionTitle で付ける
     pendingTitle = title
     $.ui.status(title)
@@ -133,7 +161,7 @@ export const register: Register = (on, options) => {
   // 何のデータ読み込みにトークンを使ったか: ツール結果の大きさを記録
   on('tool.call', async ($, e, next) => {
     const ran = await next(e)
-    if (ran.deny === undefined) {
+    if (ran.deny === undefined && !String(e.tool).startsWith(REMOTE)) {
       const entry: ReadEntry = {
         id: e.tool_use_id,
         turn: await $.session.turns(),
