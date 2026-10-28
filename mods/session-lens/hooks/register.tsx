@@ -68,7 +68,12 @@ async function renameRemote($: EngineInterface, title: string): Promise<boolean>
   }
 }
 
+/** 最後に付けたセッション名。同じ名前なら付け直さない（毎ターン /rename が走るのを避ける） */
+let lastTitle: string | undefined
+
 async function rename($: EngineInterface, title: string): Promise<void> {
+  if (title === lastTitle) return
+  lastTitle = title
   const isRemote = await renameRemote($, title)
   const commands = await $.command.list()
   if (commands.some(c => c.name === 'rename')) {

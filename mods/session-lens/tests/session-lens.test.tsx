@@ -118,6 +118,38 @@ describe('engine', () => {
     }
   })
 
+  test('同じセッション名なら /rename を 2 度目は呼ばない（ステータスか題が変わったときだけ改名する）', async ($, on) => {
+    const clock = mock.clock(on)
+    const renamed: string[] = []
+    let reply = REPLY
+    on('session.messages', async () => ({ value: [{ role: 'user', text: 'Mods を作って', toolUses: [] }] }) as never)
+    on('model.complete', async () => ({
+      value: {
+        isAnswered: true,
+        text: reply,
+        usage: { input_tokens: 1, output_tokens: 1, cache_read_input_tokens: 0, cache_creation_input_tokens: 0 },
+      },
+    }) as never)
+    on('command.list', async () => ({ value: [{ name: 'rename', description: 'rename', source: 'builtin' }] }) as never)
+    on('command.run', { command: 'rename' }, async (_$, e) => {
+      renamed.push(e.args)
+      return { text: '' }
+    })
+
+    await $.command.run({ command: 'lens-brief', args: '' } as never)
+    await clock.advance(10)
+    await $.command.run({ command: 'lens-brief', args: '' } as never)
+    await clock.advance(10)
+    // 変異: 前の名前と比べずに毎回 /rename すると赤（2 回になる）
+    expect(renamed).toEqual(['[完了][Mods設…] UIの自動化設定'])
+
+    // 題が変われば付け直す
+    reply = REPLY.replace('UIの自動化設定', '別の作業')
+    await $.command.run({ command: 'lens-brief', args: '' } as never)
+    await clock.advance(10)
+    expect(renamed.length).toBe(2)
+  })
+
   test('右ペインは /context の内訳と読み込み元を両方の面に描く', async ($, on) => {
     mock.clock(on)
     on('session.usage', async () => ({
