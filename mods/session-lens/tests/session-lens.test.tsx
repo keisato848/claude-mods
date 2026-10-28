@@ -1,6 +1,6 @@
 import { describe, expect, mock, test } from 'claude-code/testing'
 
-import { buildTitle, estimateTokens, parseBrief, renderText, targetOf } from '../hooks/lib'
+import { buildTitle, estimateTokens, parseBrief, renderText, shouldRename, similarity, targetOf } from '../hooks/lib'
 
 const REPLY = JSON.stringify({
   status: '完了',
@@ -11,6 +11,23 @@ const REPLY = JSON.stringify({
 })
 
 describe('lib', () => {
+  test('similarity は 2 文字の組の重なりで、似た言い換えは 7 割以上・別の話題は低い', async () => {
+    expect(similarity('UIの自動化設定', 'UIの自動化設定')).toBe(1)
+    expect(similarity('UIの自動化設定', 'UIの自動化の設定') >= 0.7).toBe(true)
+    expect(similarity('UIの自動化設定', 'Cockpilot のページ作り') < 0.3).toBe(true)
+  })
+
+  test('shouldRename はステータスが同じで要約が 7 割以上似ていれば付け直さない', async () => {
+    const last = { status: '作業中' as const, title: 'UIの自動化設定' }
+    // 変異: 初回を false にすると赤（一度も名前が付かない）
+    expect(shouldRename(undefined, last)).toBe(true)
+    // 変異: 完全一致でしか止めないと赤（言い換えで毎回改名する）
+    expect(shouldRename(last, { status: '作業中', title: 'UIの自動化の設定' })).toBe(false)
+    // 変異: ステータスを見ないと赤（作業中→確認待ちが名前に出ない）
+    expect(shouldRename(last, { status: '確認待ち', title: 'UIの自動化設定' })).toBe(true)
+    expect(shouldRename(last, { status: '作業中', title: 'Cockpilot のページ作り' })).toBe(true)
+  })
+
   test('parseBrief はタグを 6 文字に詰め、不明なステータスを作業中に倒す', async () => {
     const b = parseBrief(`前置き ${REPLY}`, 1, 10)
     expect(b?.tag).toBe('Mods設…')
@@ -116,6 +133,46 @@ describe('engine', () => {
       const ui = await $.ui.mount({ plugin: 'session-lens', surface, component: 'AbovePrompt', props: { hasSurvey: false } as never })
       expect((await ui.findAll({ type: 'Text', text: /次の一手: 利用者の指示待ち/ })).length > 0).toBe(true)
     }
+  })
+
+  test('ステータスが同じで要約が 7 割以上似ていれば /rename を呼ばず、変わったときだけ呼ぶ', async ($, on) => {
+    const clock = mock.clock(on)
+    const renamed: string[] = []
+    let reply = REPLY
+    on('session.messages', async () => ({ value: [{ role: 'user', text: 'Mods を作って', toolUses: [] }] }) as never)
+    on('model.complete', async () => ({
+      value: {
+        isAnswered: true,
+        text: reply,
+        usage: { input_tokens: 1, output_tokens: 1, cache_read_input_tokens: 0, cache_creation_input_tokens: 0 },
+      },
+    }) as never)
+    on('command.list', async () => ({ value: [{ name: 'rename', description: 'rename', source: 'builtin' }] }) as never)
+    on('command.run', { command: 'rename' }, async (_$, e) => {
+      renamed.push(e.args)
+      return { text: '' }
+    })
+    const brief = async () => {
+      await $.command.run({ command: 'lens-brief', args: '' } as never)
+      await clock.advance(10)
+    }
+
+    await brief()
+    // 同じステータスで、要約が少し言い換わっただけ（7 割以上似ている）
+    reply = REPLY.replace('UIの自動化設定', 'UIの自動化の設定')
+    await brief()
+    // 変異: 完全一致でしか止めないと赤（2 回になる）
+    expect(renamed).toEqual(['[完了][Mods設…] UIの自動化設定'])
+
+    // ステータスが変われば付け直す
+    reply = REPLY.replace('"完了"', '"確認待ち"')
+    await brief()
+    expect(renamed.length).toBe(2)
+
+    // 要約が別の話題になれば付け直す
+    reply = REPLY.replace('"完了"', '"確認待ち"').replace('UIの自動化設定', 'Cockpilot のページ作り')
+    await brief()
+    expect(renamed.length).toBe(3)
   })
 
   test('右ペインは /context の内訳と読み込み元を両方の面に描く', async ($, on) => {
