@@ -53,6 +53,39 @@ export function buildTitle(brief: Pick<Brief, 'status' | 'tag' | 'title'>): stri
   return oneLine(`[${brief.status}][${brief.tag}] ${brief.title}`, 48)
 }
 
+/** 2 つの文の似ている度合い（0〜1）。2 文字ずつの組の重なり（Dice 係数）。日本語でも語の区切りに頼らない */
+export function similarity(a: string, b: string): number {
+  const norm = (t: string) => t.replace(/\s+/g, '')
+  const x = norm(a)
+  const y = norm(b)
+  if (x === y) return 1
+  if (x.length < 2 || y.length < 2) return 0
+  const pairs = (t: string) => {
+    const m = new Map<string, number>()
+    for (let i = 0; i < t.length - 1; i++) {
+      const k = t.slice(i, i + 2)
+      m.set(k, (m.get(k) ?? 0) + 1)
+    }
+    return m
+  }
+  const px = pairs(x)
+  const py = pairs(y)
+  let hit = 0
+  for (const [k, n] of px) hit += Math.min(n, py.get(k) ?? 0)
+  return (2 * hit) / (x.length - 1 + (y.length - 1))
+}
+
+/** 付け直すほど変わったか: ステータスが変わった、または要約（題）の似ている度合いが 7 割に届かない */
+export const RENAME_SIMILARITY = 0.7
+export function shouldRename(
+  last: Pick<Brief, 'status' | 'title'> | undefined,
+  next: Pick<Brief, 'status' | 'title'>,
+): boolean {
+  if (last === undefined) return true
+  if (last.status !== next.status) return true
+  return similarity(last.title, next.title) < RENAME_SIMILARITY
+}
+
 export type Excerpt = { role: string; text: string; tools: string[] }
 
 export function buildPrompt(first: string, recent: readonly Excerpt[], fixedStatus: BriefStatus | null): string {

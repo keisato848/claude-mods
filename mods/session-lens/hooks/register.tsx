@@ -1,8 +1,8 @@
 import { atom, read, update } from 'claude-code'
 import type { EngineInterface, Register } from 'claude-code'
 
-import type { BriefStatus, CtxSnapshot, ReadEntry } from '../types'
-import { buildPrompt, buildTitle, colorAt, estimateTokens, fmt, oneLine, parseBrief, renderHtml, renderText, stackedBarSvg, targetOf, topReads } from './lib'
+import type { Brief, BriefStatus, CtxSnapshot, ReadEntry } from '../types'
+import { buildPrompt, buildTitle, colorAt, estimateTokens, fmt, oneLine, parseBrief, renderHtml, renderText, shouldRename, stackedBarSvg, targetOf, topReads } from './lib'
 import type { Excerpt } from './lib'
 
 const PANE = 'lens-tokens'
@@ -68,12 +68,13 @@ async function renameRemote($: EngineInterface, title: string): Promise<boolean>
   }
 }
 
-/** 最後に付けたセッション名。同じ名前なら付け直さない（毎ターン /rename が走るのを避ける） */
-let lastTitle: string | undefined
+/** 最後に付けた名前のもと。ステータスが同じで要約が 7 割以上似ていれば付け直さない（毎ターン /rename が走るのを避ける） */
+let lastNamed: Pick<Brief, 'status' | 'title'> | undefined
 
-async function rename($: EngineInterface, title: string): Promise<void> {
-  if (title === lastTitle) return
-  lastTitle = title
+async function rename($: EngineInterface, parsed: Brief): Promise<void> {
+  if (!shouldRename(lastNamed, parsed)) return
+  lastNamed = { status: parsed.status, title: parsed.title }
+  const title = buildTitle(parsed)
   const isRemote = await renameRemote($, title)
   const commands = await $.command.list()
   if (commands.some(c => c.name === 'rename')) {
@@ -120,7 +121,7 @@ async function refreshBrief($: EngineInterface, model: string, autoRename: boole
       return
     }
     await update($, brief, () => parsed)
-    if (autoRename) await rename($, buildTitle(parsed))
+    if (autoRename) await rename($, parsed)
   } finally {
     await update($, isBusy, () => false)
   }
