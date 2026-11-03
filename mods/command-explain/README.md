@@ -32,4 +32,4 @@ claude plugin marketplace add keisato848/claude-mods || true; claude plugin inst
 ## 確かめたこと
 
 - `claude plugin test`（5 件）・`claude plugin validate` を Claude Code 2.1.317 で通過
-- クラウドセッションを Claude アプリ（スマホ）から操作し、権限モード「確認する」で承認カードに説明が出ることを確認（2026-11-03）
+- 未確認: 実際の承認カード（ターミナル・スマホのアプリ）に説明が出るか。auto モードで何もしないか
