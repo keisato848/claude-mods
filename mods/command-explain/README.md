@@ -4,6 +4,9 @@
 
 Claude Code にあった Ctrl+E のコマンド説明（`permissionExplainerEnabled`）は v2.1.257 で削除された。その代わり。
 
+> [!WARNING]
+> 手元のターミナル・VS Code 向け（実画面では未確認）。スマホの Claude アプリから操作するクラウドセッションでは説明は見えない。アプリは Mod の画面として繋がらず、確認カードは理由欄を出さない。帯（`ui.render`）は呼ばれず、`$.ui.notify` は `no-surface`、通知ツール（PushNotification）を呼んでもアプリを開いている人には届かなかった（2026-11-03 実測）。
+
 ## 動き
 
 - `tool.check` で、エンジンの判定が `ask`（人に聞く）のときだけ Haiku 5.5 を 1 回呼び、`reason` に「説明: …」を足す
@@ -24,13 +27,8 @@ claude plugin marketplace add keisato848/claude-mods
 claude plugin install command-explain@keisato-mods
 ```
 
-クラウドセッションでは、環境の Setup script に次を置く（0 で終わる形にする）。
-
-```sh
-claude plugin marketplace add keisato848/claude-mods || true; claude plugin install command-explain@keisato-mods || true
-```
-
 ## 確かめたこと
 
 - `claude plugin test`（5 件）・`claude plugin validate` を Claude Code 2.1.317 で通過
-- 未確認: 実際の承認カード（ターミナル・スマホのアプリ）に説明が出るか。auto モードで何もしないか
+- クラウドセッション（スマホのアプリ）で、Mod が説明を作って確認の理由に足すところまでは動く（記録で確認）。アプリには表示されない
+- 未確認: ターミナル・VS Code の確認画面に説明が出るか。auto モードで何もしないか
