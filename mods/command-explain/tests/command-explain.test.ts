@@ -30,14 +30,25 @@ describe('engine', () => {
     expect(prompt).toContain('rm -rf dist')
   })
 
-  test('allow・deny・シェル以外には触らず、AI も呼ばない', async ($, on) => {
+  test('allow には触らず、AI も呼ばない', async ($, on) => {
     let calls = 0
     on('model.complete', async () => { calls++; return answer('x')() })
-    on('tool.check', async (_$, e) => ({ decision: (e as { tool: string }).tool === 'Read' ? 'ask' : 'allow' }) as never)
+    on('tool.check', async () => ({ decision: 'allow' }) as never)
     expect((await $.tool.check({ tool: 'Bash', input: { command: 'ls' } })).reason).toBe(undefined)
-    expect((await $.tool.check({ tool: 'Read', input: { file_path: '/x' } })).reason).toBe(undefined)
+    expect((await $.tool.check({ tool: 'AskUserQuestion', input: {} })).reason).toBe(undefined)
     // 変異: decision を見ないと赤（自動で通るコマンドにも毎回 Haiku を呼ぶ）
     expect(calls).toBe(0)
+  })
+
+  test('シェル以外のツールの確認にも説明が付き、質問ツールには付かない', async ($, on) => {
+    let prompt = ''
+    on('tool.check', async () => ({ decision: 'ask' }) as never)
+    on('model.complete', async (_$, e) => { prompt = (e as { prompt: string }).prompt; return answer('Issue にコメントを書き込みます。')() })
+    const v = await $.tool.check({ tool: 'mcp__github__add_issue_comment', input: { issue_number: 3, body: 'hi' } })
+    // 変異: シェルだけに絞ると赤（クラウドの確認はほぼシェル以外）
+    expect(v.reason).toBe('説明: Issue にコメントを書き込みます。')
+    expect(prompt).toContain('issue_number')
+    expect((await $.tool.check({ tool: 'AskUserQuestion', input: {} })).reason).toBe(undefined)
   })
 
   test('AI が答えなければ元の確認をそのまま返す', async ($, on) => {

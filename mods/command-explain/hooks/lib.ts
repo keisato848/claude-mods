@@ -3,6 +3,30 @@ export const SILENT_MODES = new Set(['auto', 'bypassPermissions', 'dontAsk', 'pl
 
 export const SHELL_TOOLS = new Set(['Bash', 'PowerShell'])
 
+/** 人に答えてもらうこと自体が目的のツール。説明は要らない */
+export const SKIP_TOOLS = new Set(['AskUserQuestion', 'ExitPlanMode', 'EnterPlanMode'])
+
+/** シェル以外のツールの引数を、説明を頼める長さの文字列にする */
+export function inputText(input: unknown): string {
+  try {
+    return JSON.stringify(input, null, 1).slice(0, 4000)
+  } catch {
+    return String(input).slice(0, 4000)
+  }
+}
+
+export function buildToolPrompt(tool: string, input: string): string {
+  return [
+    `AI が次のツール「${tool}」を呼んでよいか、利用者が承認を求められています。`,
+    'この呼び出しで何が起きるかを、プログラミングに詳しくない人にも分かる日本語で 2〜3 文で説明してください。',
+    '消す・上書きする・外部へ送る・公開する・権限を変えるなど、元に戻しにくい動作があれば最後に「注意:」で一言添えてください。無ければ書かないでください。',
+    '前置きや見出しは付けず、説明の本文だけを返してください。',
+    '',
+    '引数:',
+    input,
+  ].join('\n')
+}
+
 export function commandOf(input: unknown): string {
   const c = (input as { command?: unknown } | null)?.command
   return typeof c === 'string' ? c : ''
