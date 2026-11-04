@@ -65,8 +65,22 @@ describe('lib', () => {
   })
 })
 
+const ON = { options: { enabled: true } }
+
 describe('engine', () => {
-  test('クラウドではセッション管理の MCP でアプリ上の名前も変える', async ($, on) => {
+  test('既定はオフで、/lens-brief にも答えず AI も呼ばない', async ($, on) => {
+    const clock = mock.clock(on)
+    let calls = 0
+    on('model.complete', async () => { calls++; return { value: { isAnswered: false, reason: 'off' } } as never })
+    on('command.run', async () => ({ text: 'engine' }) as never)
+    const r = await $.command.run({ command: 'lens-brief', args: '' } as never)
+    await clock.advance(10)
+    // 変異: 既定をオンにすると赤（Mod が答え、Haiku を呼ぶ）
+    expect((r as { text?: string }).text).toBe('engine')
+    expect(calls).toBe(0)
+  })
+
+  test('クラウドではセッション管理の MCP でアプリ上の名前も変える', ON, async ($, on) => {
     const clock = mock.clock(on)
     const titles: { session_id: string; title: string }[] = []
 
@@ -96,7 +110,7 @@ describe('engine', () => {
     expect(titles).toEqual([{ session_id: 'session_01abc', title: '[完了][Mods設…] UIの自動化設定' }])
   })
 
-  test('/lens-brief は Haiku 5.5 で要約し、/rename で改名し、下部に次の一手を出す', async ($, on) => {
+  test('/lens-brief は Haiku 5.5 で要約し、/rename で改名し、下部に次の一手を出す', ON, async ($, on) => {
     const clock = mock.clock(on)
     const models: string[] = []
     let renamed = ''
@@ -135,7 +149,7 @@ describe('engine', () => {
     }
   })
 
-  test('ステータスが同じで要約が 7 割以上似ていれば /rename を呼ばず、変わったときだけ呼ぶ', async ($, on) => {
+  test('ステータスが同じで要約が 7 割以上似ていれば /rename を呼ばず、変わったときだけ呼ぶ', ON, async ($, on) => {
     const clock = mock.clock(on)
     const renamed: string[] = []
     let reply = REPLY
@@ -175,7 +189,7 @@ describe('engine', () => {
     expect(renamed.length).toBe(3)
   })
 
-  test('右ペインは /context の内訳と読み込み元を両方の面に描く', async ($, on) => {
+  test('右ペインは /context の内訳と読み込み元を両方の面に描く', ON, async ($, on) => {
     mock.clock(on)
     on('session.usage', async () => ({
       value: {

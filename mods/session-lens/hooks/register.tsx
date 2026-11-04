@@ -128,6 +128,8 @@ async function refreshBrief($: EngineInterface, model: string, autoRename: boole
 }
 
 export const register: Register = (on, options) => {
+  // 既定はオフ。ユーザースコープで入れると全セッションで動くため、使うときだけ /config でオンにする
+  if (options.enabled !== true) return
   const model = typeof options.backgroundModel === 'string' && options.backgroundModel !== '' ? options.backgroundModel : DEFAULT_MODEL
   const autoRename = options.autoRename !== false
 

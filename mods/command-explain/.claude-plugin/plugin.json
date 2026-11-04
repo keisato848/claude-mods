@@ -1,0 +1,14 @@
+{
+  "name": "command-explain",
+  "version": "0.1.0",
+  "description": "シェルコマンドの権限確認が人に回るとき、そのコマンドが何をするかを日本語で確認画面に添える（Haiku 5.5）",
+  "userConfig": {
+    "model": {
+      "type": "string",
+      "title": "説明に使うモデル",
+      "description": "確認画面に添える説明を作るモデル",
+      "default": "claude-haiku-5-5",
+      "options": ["claude-haiku-5-5"]
+    }
+  }
+}
